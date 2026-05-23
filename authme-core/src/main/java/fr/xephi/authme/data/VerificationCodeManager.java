@@ -152,8 +152,9 @@ public class VerificationCodeManager implements SettingsDependent, HasCleanup {
                 final String email = emailResult.getValue();
                 if (!Utils.isEmailEmpty(email)) {
                     String code = RandomStringUtils.generateNum(6); // 6 digits code
-                    verificationCodes.put(lowerName, code);
-                    emailService.sendVerificationMail(name, email, code);
+                    if (emailService.sendVerificationMail(name, email, code)) {
+                        verificationCodes.put(lowerName, code);
+                    }
                 }
             }
         } finally {

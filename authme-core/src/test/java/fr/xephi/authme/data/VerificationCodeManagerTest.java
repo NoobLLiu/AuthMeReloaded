@@ -122,6 +122,7 @@ class VerificationCodeManagerTest {
         String player = "ILoveTests";
         String email = "ilovetests@test.com";
         given(dataSource.getEmail(player)).willReturn(DataSourceValueImpl.of(email));
+        given(emailService.sendVerificationMail(eq(player), eq(email), anyString())).willReturn(true);
         setBukkitServiceToRunTaskAsynchronously(bukkitService);
         VerificationCodeManager codeManager1 = createCodeManager();
         VerificationCodeManager codeManager2 = createCodeManager();
@@ -143,6 +144,7 @@ class VerificationCodeManagerTest {
         String player = "ILoveTests";
         String email = "ilovetests@test.com";
         given(dataSource.getEmail(player)).willReturn(DataSourceValueImpl.of(email));
+        given(emailService.sendVerificationMail(eq(player), eq(email), anyString())).willReturn(true);
         setBukkitServiceToRunTaskAsynchronously(bukkitService);
         VerificationCodeManager codeManager1 = createCodeManager();
         VerificationCodeManager codeManager2 = createCodeManager();
@@ -195,11 +197,29 @@ class VerificationCodeManagerTest {
         verify(emailService, only()).hasAllInformation();
 
         given(dataSource.getEmail(player)).willReturn(DataSourceValueImpl.of(email));
+        given(emailService.sendVerificationMail(eq(player), eq(email), anyString())).willReturn(true);
         runnableCaptor.getValue().run();
 
         assertThat(codeManager.hasCode(player), equalTo(true));
         verify(dataSource).getEmail(player);
         verify(emailService).sendVerificationMail(eq(player), eq(email), anyString());
+    }
+
+    @Test
+    void shouldNotStoreCodeIfEmailSendFails() {
+        // given
+        String player = "ILoveTests";
+        String email = "ilovetests@test.com";
+        given(dataSource.getEmail(player)).willReturn(DataSourceValueImpl.of(email));
+        given(emailService.sendVerificationMail(eq(player), eq(email), anyString())).willReturn(false);
+        setBukkitServiceToRunTaskAsynchronously(bukkitService);
+        VerificationCodeManager codeManager = createCodeManager();
+
+        // when
+        codeManager.codeExistOrGenerateNew(player);
+
+        // then
+        assertThat(codeManager.hasCode(player), equalTo(false));
     }
 
     @Test
