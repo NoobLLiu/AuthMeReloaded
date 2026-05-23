@@ -253,13 +253,11 @@ public class AsynchronousJoinTest {
         given(service.getProperty(PremiumSettings.ENABLE_PREMIUM)).willReturn(true);
         given(bungeeSender.isEnabled()).willReturn(true);
         UUID offlineUuid = UUID.fromString("f0647d73-8421-3979-bdb6-6b88dc3d03d4");
-        UUID pendingPremiumUuid = UUID.fromString("8d6d0684-d8b4-4d40-8d2d-0dd4df5555c8");
         given(player.getUniqueId()).willReturn(offlineUuid);
 
         fr.xephi.authme.data.auth.PlayerAuth auth = mock(fr.xephi.authme.data.auth.PlayerAuth.class);
         given(database.getAuth("bobby")).willReturn(auth);
         given(auth.isPremium()).willReturn(false);
-        given(pendingPremiumCache.getPendingUuid("Bobby")).willReturn(pendingPremiumUuid);
 
         // when
         asynchronousJoin.processJoin(player);

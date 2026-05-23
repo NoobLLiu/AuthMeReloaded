@@ -21,7 +21,16 @@ import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -68,9 +77,10 @@ public final class BungeeProxyBridge implements Listener {
         t.setDaemon(true);
         return t;
     });
+    private final Path cacheFile;
 
     BungeeProxyBridge(ProxyServer proxyServer, Logger logger, BungeeProxyConfiguration configuration,
-                      BungeeAuthenticationStore authenticationStore) {
+                      BungeeAuthenticationStore authenticationStore, Path dataDirectory) {
         this.proxyServer = proxyServer;
         this.logger = logger;
         this.configuration = configuration;
@@ -81,6 +91,50 @@ public final class BungeeProxyBridge implements Listener {
                 this::requiresPremiumVerification, this::isPendingPremiumVerification,
                 this::clearPendingPremiumVerification,
                 () -> this.configuration.keepOfflineUuidCompatibility());
+        this.cacheFile = dataDirectory != null ? dataDirectory.resolve("premium_names.cache") : null;
+        if (cacheFile != null) {
+            loadPremiumNamesCache();
+        }
+    }
+
+    private void loadPremiumNamesCache() {
+        Set<String> loaded = new HashSet<>();
+        try (BufferedReader reader = Files.newBufferedReader(cacheFile, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String name = line.trim();
+                if (!name.isEmpty()) {
+                    loaded.add(name);
+                }
+            }
+            Set<String> newSet = ConcurrentHashMap.newKeySet();
+            newSet.addAll(loaded);
+            premiumUsernames = newSet;
+            logger.info("Loaded " + loaded.size() + " premium username(s) from cache");
+        } catch (NoSuchFileException ignored) {
+            // No cache yet — first startup
+        } catch (IOException e) {
+            logger.warning("Failed to load premium names cache: " + e.getMessage());
+        }
+    }
+
+    private void savePremiumNamesAsync() {
+        if (cacheFile == null) {
+            return;
+        }
+        Set<String> snapshot = new HashSet<>(premiumUsernames);
+        retryScheduler.execute(() -> {
+            Path tmp = cacheFile.resolveSibling(cacheFile.getFileName() + ".tmp");
+            try (BufferedWriter writer = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
+                for (String name : snapshot) {
+                    writer.write(name);
+                    writer.newLine();
+                }
+                Files.move(tmp, cacheFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) {
+                logger.warning("Failed to save premium names cache: " + e.getMessage());
+            }
+        });
     }
 
     void reload(BungeeProxyConfiguration configuration) {
@@ -214,11 +268,13 @@ public final class BungeeProxyBridge implements Listener {
             premiumUsernames.add(parsedMessage.playerName());
             pendingPremiumUsernames.remove(parsedMessage.playerName());
             logger.fine(() -> "Premium enabled for '" + parsedMessage.playerName() + "' (proxy cache updated)");
+            savePremiumNamesAsync();
         } else if (PREMIUM_UNSET_MESSAGE.equals(parsedMessage.typeId())) {
             premiumUsernames.remove(parsedMessage.playerName());
             pendingPremiumUsernames.remove(parsedMessage.playerName());
             premiumVerificationManager.clearVerifiedPremium(parsedMessage.playerName());
             logger.fine(() -> "Premium disabled for '" + parsedMessage.playerName() + "' (proxy cache updated)");
+            savePremiumNamesAsync();
         } else if (PREMIUM_PENDING_SET_MESSAGE.equals(parsedMessage.typeId())) {
             pendingPremiumUsernames.add(parsedMessage.playerName());
             premiumVerificationManager.clearVerifiedPremium(parsedMessage.playerName());
@@ -257,6 +313,7 @@ public final class BungeeProxyBridge implements Listener {
                 premiumUsernames = newPremiumSet;
                 premiumListBuffer = new ArrayList<>();
                 logger.info("Premium list received from backend: " + premiumUsernames.size() + " premium player(s)");
+                savePremiumNamesAsync();
             }
         }
     }

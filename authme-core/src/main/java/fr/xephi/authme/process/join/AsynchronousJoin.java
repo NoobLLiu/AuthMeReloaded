@@ -431,16 +431,20 @@ public class AsynchronousJoin implements AsynchronousProcess {
         }
 
         if (!auth.isPremium()) {
-            // Check for a pending premium verification (player ran /premium and was asked to reconnect).
-            UUID pendingUuid = pendingPremiumCache.getPendingUuid(name);
-            if (pendingUuid == null) {
-                return false;
-            }
             UUID playerId = player.getUniqueId();
-            UUID confirmedUuid;
             if (playerId.version() == 4) {
-                // Proxy already performed Mojang authentication — UUID v4 is the confirmed Mojang UUID.
-                confirmedUuid = playerId.equals(pendingUuid) ? playerId : null;
+                // Proxy path: atomic gate prevents double-finalization with concurrent validate().
+                UUID pendingUuid = pendingPremiumCache.removePending(name);
+                if (pendingUuid == null) {
+                    return false;
+                }
+                if (playerId.equals(pendingUuid)) {
+                    premiumService.finalizePendingPremium(player, pendingUuid);
+                    return true;
+                }
+                bungeeSender.sendPremiumUnset(name);
+                service.send(player, MessageKey.PREMIUM_PENDING_FAIL);
+                return false;
             } else if (bungeeSender.isEnabled()) {
                 // Behind a proxy we intentionally keep the backend UUID on the offline v3 value.
                 // Wait for the signed perform.login request carrying the verified Mojang UUID
@@ -448,16 +452,17 @@ public class AsynchronousJoin implements AsynchronousProcess {
                 return false;
             } else {
                 // No proxy: require cryptographic session verification via PacketEvents.
+                UUID pendingUuid = pendingPremiumCache.getPendingUuid(name);
+                if (pendingUuid == null) {
+                    return false;
+                }
                 UUID verified = premiumLoginVerifier.getVerifiedUuid(name);
-                confirmedUuid = (verified != null && verified.equals(pendingUuid)) ? verified : null;
-            }
-
-            pendingPremiumCache.removePending(name);
-
-            if (confirmedUuid != null) {
-                premiumService.finalizePendingPremium(player, confirmedUuid);
-                return true;
-            } else {
+                UUID confirmedUuid = (verified != null && verified.equals(pendingUuid)) ? verified : null;
+                pendingPremiumCache.removePending(name);
+                if (confirmedUuid != null) {
+                    premiumService.finalizePendingPremium(player, confirmedUuid);
+                    return true;
+                }
                 bungeeSender.sendPremiumUnset(name);
                 service.send(player, MessageKey.PREMIUM_PENDING_FAIL);
                 return false;

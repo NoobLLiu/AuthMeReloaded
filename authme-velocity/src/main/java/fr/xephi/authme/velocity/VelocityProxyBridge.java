@@ -24,7 +24,16 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -71,9 +80,10 @@ final class VelocityProxyBridge {
         t.setDaemon(true);
         return t;
     });
+    private final Path cacheFile;
 
     VelocityProxyBridge(ProxyServer proxyServer, Logger logger, VelocityProxyConfiguration configuration,
-                        VelocityAuthenticationStore authenticationStore) {
+                        VelocityAuthenticationStore authenticationStore, Path dataDirectory) {
         this.proxyServer = proxyServer;
         this.logger = logger;
         this.configuration = configuration;
@@ -82,6 +92,50 @@ final class VelocityProxyBridge {
             new VelocityPremiumVerificationManager(logger,
                 this::requiresPremiumVerification, this::isPendingPremiumVerification,
                 () -> this.configuration.keepOfflineUuidCompatibility());
+        this.cacheFile = dataDirectory != null ? dataDirectory.resolve("premium_names.cache") : null;
+        if (cacheFile != null) {
+            loadPremiumNamesCache();
+        }
+    }
+
+    private void loadPremiumNamesCache() {
+        Set<String> loaded = new HashSet<>();
+        try (BufferedReader reader = Files.newBufferedReader(cacheFile, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String name = line.trim();
+                if (!name.isEmpty()) {
+                    loaded.add(name);
+                }
+            }
+            Set<String> newSet = ConcurrentHashMap.newKeySet();
+            newSet.addAll(loaded);
+            premiumUsernames = newSet;
+            logger.info("Loaded {} premium username(s) from cache", loaded.size());
+        } catch (NoSuchFileException ignored) {
+            // No cache yet — first startup
+        } catch (IOException e) {
+            logger.warn("Failed to load premium names cache: {}", e.getMessage());
+        }
+    }
+
+    private void savePremiumNamesAsync() {
+        if (cacheFile == null) {
+            return;
+        }
+        Set<String> snapshot = new HashSet<>(premiumUsernames);
+        retryScheduler.execute(() -> {
+            Path tmp = cacheFile.resolveSibling(cacheFile.getFileName() + ".tmp");
+            try (BufferedWriter writer = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
+                for (String name : snapshot) {
+                    writer.write(name);
+                    writer.newLine();
+                }
+                Files.move(tmp, cacheFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) {
+                logger.warn("Failed to save premium names cache: {}", e.getMessage());
+            }
+        });
     }
 
     void reload(VelocityProxyConfiguration configuration) {
@@ -217,11 +271,13 @@ final class VelocityProxyBridge {
             premiumUsernames.add(parsedMessage.playerName());
             pendingPremiumUsernames.remove(parsedMessage.playerName());
             logger.debug("Premium enabled for '{}' (proxy cache updated)", parsedMessage.playerName());
+            savePremiumNamesAsync();
         } else if (PREMIUM_UNSET_MESSAGE.equals(parsedMessage.typeId())) {
             premiumUsernames.remove(parsedMessage.playerName());
             pendingPremiumUsernames.remove(parsedMessage.playerName());
             premiumVerificationManager.clearVerifiedPremium(parsedMessage.playerName());
             logger.debug("Premium disabled for '{}' (proxy cache updated)", parsedMessage.playerName());
+            savePremiumNamesAsync();
         } else if (PREMIUM_PENDING_SET_MESSAGE.equals(parsedMessage.typeId())) {
             pendingPremiumUsernames.add(parsedMessage.playerName());
             premiumVerificationManager.clearVerifiedPremium(parsedMessage.playerName());
@@ -260,6 +316,7 @@ final class VelocityProxyBridge {
                 premiumUsernames = newPremiumSet;
                 premiumListBuffer = new ArrayList<>();
                 logger.info("Premium list received from backend: {} premium player(s)", premiumUsernames.size());
+                savePremiumNamesAsync();
             }
         }
     }

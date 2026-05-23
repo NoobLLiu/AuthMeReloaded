@@ -78,14 +78,13 @@ public class ProxyLoginRequestValidator {
             return false;
         }
 
-        UUID pendingPremiumUuid = pendingPremiumCache.getPendingUuid(playerName);
+        UUID pendingPremiumUuid = pendingPremiumCache.removePending(playerName);
         if (pendingPremiumUuid == null) {
-            logger.warning("Rejected proxy premium login for " + playerName
-                + ": account is neither premium nor pending premium verification");
+            logger.debug("No pending premium entry for " + playerName
+                + " — possibly already processed by canBypassWithPremium");
             return false;
         }
 
-        pendingPremiumCache.removePending(playerName);
         if (!verifiedPremiumUuid.equals(pendingPremiumUuid)) {
             logger.warning("Rejected proxy premium login for " + playerName
                 + ": verified UUID does not match pending premium UUID");

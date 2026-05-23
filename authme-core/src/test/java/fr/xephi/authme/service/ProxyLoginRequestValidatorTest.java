@@ -79,10 +79,9 @@ class ProxyLoginRequestValidatorTest {
         PlayerAuth auth = PlayerAuth.builder().name("bobby").build();
         given(player.getName()).willReturn("Bobby");
         given(playerCache.getAuth("Bobby")).willReturn(auth);
-        given(pendingPremiumCache.getPendingUuid("Bobby")).willReturn(pendingUuid);
+        given(pendingPremiumCache.removePending("Bobby")).willReturn(pendingUuid);
 
         assertTrue(validator.validate(player, pendingUuid));
-        verify(pendingPremiumCache).removePending("Bobby");
         verify(premiumService).finalizePendingPremium(player, pendingUuid);
     }
 
@@ -93,10 +92,9 @@ class ProxyLoginRequestValidatorTest {
         PlayerAuth auth = PlayerAuth.builder().name("bobby").build();
         given(player.getName()).willReturn("Bobby");
         given(playerCache.getAuth("Bobby")).willReturn(auth);
-        given(pendingPremiumCache.getPendingUuid("Bobby")).willReturn(pendingUuid);
+        given(pendingPremiumCache.removePending("Bobby")).willReturn(pendingUuid);
 
         assertFalse(validator.validate(player, forwardedUuid));
-        verify(pendingPremiumCache).removePending("Bobby");
         verify(bungeeSender).sendPremiumUnset("Bobby");
         verify(messages).send(player, MessageKey.PREMIUM_PENDING_FAIL);
         verify(premiumService, never()).finalizePendingPremium(player, forwardedUuid);
