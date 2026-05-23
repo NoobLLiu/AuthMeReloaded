@@ -8,6 +8,7 @@ import fr.xephi.authme.security.crypts.EncryptionMethod;
 public enum HashAlgorithm {
 
     ARGON2(fr.xephi.authme.security.crypts.Argon2.class),
+    ARGON2ID(fr.xephi.authme.security.crypts.Argon2Id.class),
     BCRYPT(fr.xephi.authme.security.crypts.BCrypt.class),
     BCRYPT2Y(fr.xephi.authme.security.crypts.BCrypt2y.class),
     CMW(fr.xephi.authme.security.crypts.CmwCrypt.class),

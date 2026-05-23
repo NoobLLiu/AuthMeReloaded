@@ -46,7 +46,7 @@ Migrates accounts from the **LibreLogin** plugin.
 | LibreLogin algorithm | AuthMe `passwordHash` |
 |---|---|
 | `BCrypt-2A` (default) | `BCRYPT` |
-| `Argon2-ID` | `ARGON2` |
+| `Argon2-ID` | `ARGON2ID` |
 | `SHA-256` | `SHA256` |
 | `SHA-512` | `DOUBLE_SHA512` |
 | `LOGIT-SHA-256` | `SALTEDSHA256` |
@@ -80,7 +80,7 @@ Migrates accounts from the **NexAuth** plugin (a fork of LibreLogin).
 | NexAuth algorithm | AuthMe `passwordHash` |
 |---|---|
 | `BCrypt-2A` (default) | `BCRYPT` |
-| `Argon-2ID` | `ARGON2` |
+| `Argon-2ID` | `ARGON2ID` |
 | `SHA-256` | `SHA256` |
 | `SHA-512` | `DOUBLE_SHA512` |
 | `LOGIT-SHA-256` | `SALTEDSHA256` |
@@ -139,7 +139,7 @@ Migrates accounts from the **nLogin** plugin.
 |---|---|
 | BCrypt (default) | `BCRYPT` or `BCRYPT2Y` |
 | SHA-256 (`$SHA$…`) | `SHA256` |
-| Argon2 | `ARGON2` |
+| Argon2 (argon2id) | `ARGON2ID` |
 
 **Notes:**
 - Email addresses and last-login timestamps are migrated.

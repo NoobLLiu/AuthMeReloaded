@@ -35,7 +35,7 @@ import static fr.xephi.authme.util.Utils.logAndSendMessage;
  * <p>
  * nLogin reuses AuthMe's password hash formats for BCrypt, SHA-256 and SHA-512, so hashes are
  * copied as-is. Configure AuthMe's {@code passwordHash} to match nLogin's algorithm (default:
- * {@code BCRYPT}). Argon2 hashes are also supported via {@code ARGON2}.
+ * {@code BCRYPT}). Argon2 (argon2id) hashes are supported via {@code ARGON2ID}.
  */
 public class NLoginConverter implements Converter {
 

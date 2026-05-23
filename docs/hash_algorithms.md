@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED FILE! Do not edit this directly -->
-<!-- File auto-generated on Wed May 06 10:48:06 CEST 2026. See authme-tools/src/test/java/tools/docs/hashmethods/hash_algorithms.tpl.md -->
+<!-- File auto-generated on Sat May 23 08:31:23 CEST 2026. See authme-tools/src/test/java/tools/docs/hashmethods/hash_algorithms.tpl.md -->
 
 ## Hash Algorithms
 AuthMe supports the following hash algorithms for storing your passwords safely.
@@ -8,6 +8,7 @@ AuthMe supports the following hash algorithms for storing your passwords safely.
 Algorithm | Recommendation | Hash length | ASCII |     | Salt type | Length | Separate?
 --------- | -------------- | ----------- | ----- | --- | --------- | ------ | ---------
 ARGON2 | Recommended | 96 |  | | Text | 16 | 
+ARGON2ID | Recommended | 97 |  | | Text | 16 | 
 BCRYPT | Recommended | 60 |  | | Text | 22 | 
 BCRYPT2Y | Recommended | 60 |  | | Text | 22 | 
 CMW | Do not use | 32 |  | | None |  | 
@@ -82,4 +83,4 @@ or bad.
 
 ---
 
-This page was automatically generated on the [AuthMe/AuthMeReloaded repository](https://github.com/AuthMe/AuthMeReloaded/tree/master/docs/) on Wed May 06 10:48:06 CEST 2026
+This page was automatically generated on the [AuthMe/AuthMeReloaded repository](https://github.com/AuthMe/AuthMeReloaded/tree/master/docs/) on Sat May 23 08:31:23 CEST 2026

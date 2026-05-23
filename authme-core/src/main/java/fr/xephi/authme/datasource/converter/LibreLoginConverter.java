@@ -42,7 +42,7 @@ import static fr.xephi.authme.util.Utils.logAndSendMessage;
  * <b>Algorithm mapping:</b>
  * <ul>
  *   <li>{@code BCrypt-2A} → configure AuthMe with {@code passwordHash: BCRYPT}</li>
- *   <li>{@code Argon2-ID} → configure AuthMe with {@code passwordHash: ARGON2}</li>
+ *   <li>{@code Argon2-ID} → configure AuthMe with {@code passwordHash: ARGON2ID}</li>
  *   <li>{@code SHA-256} → configure AuthMe with {@code passwordHash: SHA256}</li>
  *   <li>{@code SHA-512} → configure AuthMe with {@code passwordHash: DOUBLE_SHA512}</li>
  *   <li>{@code LOGIT-SHA-256} → configure AuthMe with {@code passwordHash: SALTEDSHA256}</li>
