@@ -1,9 +1,5 @@
 package fr.xephi.authme.process.unregister;
 
-import org.mockito.quality.Strictness;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import fr.xephi.authme.TestHelper;
 import fr.xephi.authme.data.auth.PlayerAuth;
 import fr.xephi.authme.data.auth.PlayerCache;
@@ -23,19 +19,19 @@ import fr.xephi.authme.settings.properties.RestrictionSettings;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.function.Function;
 
 import static fr.xephi.authme.service.BukkitServiceTestHelper.setBukkitServiceToScheduleSyncTaskFromOptionallyAsyncTask;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -48,8 +44,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * Test for {@link AsynchronousUnregister}.
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.WARN)
-public class AsynchronousUnregisterTest {
+class AsynchronousUnregisterTest {
 
     @InjectMocks
     private AsynchronousUnregister asynchronousUnregister;
@@ -72,16 +67,14 @@ public class AsynchronousUnregisterTest {
     private CommandManager commandManager;
     @Mock
     private BungeeSender bungeeSender;
-    @Captor
-    private ArgumentCaptor<Function<Boolean, AbstractUnregisterEvent>> eventFunctionCaptor;
 
     @BeforeAll
-    public static void initLogger() {
+    static void initLogger() {
         TestHelper.setupLogger();
     }
 
     @Test
-    public void shouldRejectWrongPassword() {
+    void shouldRejectWrongPassword() {
         // given
         Player player = mock(Player.class);
         String name = "Bobby";
@@ -104,7 +97,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldPerformUnregister() {
+    void shouldPerformUnregister() {
         // given
         Player player = mock(Player.class);
         String name = "Frank21";
@@ -137,7 +130,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldPerformUnregisterAndNotApplyBlindEffect() {
+    void shouldPerformUnregisterAndNotApplyBlindEffect() {
         // given
         Player player = mock(Player.class);
         String name = "Frank21";
@@ -169,7 +162,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldNotApplyUnregisteredEffectsForNotForcedRegistration() {
+    void shouldNotApplyUnregisteredEffectsForNotForcedRegistration() {
         // given
         Player player = mock(Player.class);
         String name = "__FranK";
@@ -198,7 +191,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldHandleDatabaseError() {
+    void shouldHandleDatabaseError() {
         // given
         Player player = mock(Player.class);
         String name = "Frank21";
@@ -222,7 +215,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldNotTeleportOfflinePlayer() {
+    void shouldNotTeleportOfflinePlayer() {
         // given
         Player player = mock(Player.class);
         String name = "Frank21";
@@ -249,7 +242,7 @@ public class AsynchronousUnregisterTest {
 
     // Initiator known and Player object available
     @Test
-    public void shouldPerformAdminUnregister() {
+    void shouldPerformAdminUnregister() {
         // given
         Player player = mock(Player.class);
         String name = "Frank21";
@@ -274,7 +267,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldPerformAdminUnregisterWithoutInitiatorOrPlayer() {
+    void shouldPerformAdminUnregisterWithoutInitiatorOrPlayer() {
         // given
         String name = "billy";
         given(dataSource.removeAuth(name)).willReturn(true);
@@ -290,7 +283,7 @@ public class AsynchronousUnregisterTest {
     }
 
     @Test
-    public void shouldHandleDatabaseErrorForAdminUnregister() {
+    void shouldHandleDatabaseErrorForAdminUnregister() {
         // given
         String name = "TtOoLl";
         CommandSender initiator = mock(CommandSender.class);
@@ -307,10 +300,10 @@ public class AsynchronousUnregisterTest {
 
     @SuppressWarnings("unchecked")
     private void verifyCalledUnregisterEventFor(Player player) {
+        ArgumentCaptor<Function<Boolean, AbstractUnregisterEvent>> eventFunctionCaptor =
+            ArgumentCaptor.forClass(Function.class);
         verify(bukkitService).createAndCallEvent(eventFunctionCaptor.capture());
         AbstractUnregisterEvent event = eventFunctionCaptor.getValue().apply(true);
         assertThat(event.getPlayer(), equalTo(player));
     }
 }
-
-
