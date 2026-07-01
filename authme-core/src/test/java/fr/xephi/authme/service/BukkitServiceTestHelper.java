@@ -3,8 +3,6 @@ package fr.xephi.authme.service;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
-import java.util.function.Supplier;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
@@ -100,6 +98,20 @@ public final class BukkitServiceTestHelper {
             runnable.run();
             return null;
         }).when(bukkitService).scheduleSyncDelayedTask(any(Runnable.class), anyLong());
+    }
+
+    /**
+     * Sets a BukkitService mock to run any Runnable it is passed to its method
+     * {@link BukkitService#scheduleSyncDelayedTask(Entity, Runnable, long)}.
+     *
+     * @param bukkitService the mock to set behavior on
+     */
+    public static void setBukkitServiceToScheduleSyncDelayedTaskWithEntityAndDelay(BukkitService bukkitService) {
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(1);
+            runnable.run();
+            return null;
+        }).when(bukkitService).scheduleSyncDelayedTask(any(Entity.class), any(Runnable.class), anyLong());
     }
 
     public static void setBukkitServiceToRunOnGlobalRegion(BukkitService bukkitService) {
