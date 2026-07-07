@@ -11,6 +11,27 @@ import static ch.jalu.configme.properties.PropertyInitializer.newProperty;
 
 public final class EmailSettings implements SettingsHolder {
 
+    @Comment({
+        "Email sender implementation to use: 'smtp' (default, uses the SMTP settings below)",
+        "or 'agent_mail' (uses the Tencent Agent Mail CLI 'agently-cli' to send mail).",
+        "When set to 'agent_mail', the SMTP host/account/password fields are ignored.",
+        "See https://agent.qq.com/doc/cli-setup.md for Agent Mail CLI setup."})
+    public static final Property<String> MAIL_SENDER =
+        newProperty("Email.mailSender", "smtp");
+
+    @Comment({
+        "Path to the agently-cli executable. Defaults to 'agently-cli' (looked up on PATH).",
+        "Only used when Email.mailSender is 'agent_mail'.",
+        "On Windows you may need to set this to the full path, e.g. 'C:\\Program Files\\nodejs\\agently-cli.cmd'."})
+    public static final Property<String> AGENT_MAIL_CLI_PATH =
+        newProperty("Email.agentMailCliPath", "agently-cli");
+
+    @Comment({
+        "Timeout in seconds for each agently-cli invocation.",
+        "Only used when Email.mailSender is 'agent_mail'."})
+    public static final Property<Integer> AGENT_MAIL_TIMEOUT_SECONDS =
+        newProperty("Email.agentMailTimeoutSeconds", 30);
+
     @Comment("Email SMTP server host")
     public static final Property<String> SMTP_HOST =
         newProperty("Email.mailSMTP", "smtp.gmail.com");

@@ -14,6 +14,10 @@ registration:
     reg_only: '&b【AuthMe】&6請到下列網站：「 https://example.tw 」進行註冊。'
     success: '&b【AuthMe】&6您已成功註冊！'
     kicked_admin_registered: '&b【AuthMe】&6管理員已協助您註冊，請重新登入。'
+    verify_email_sent: '&b【AuthMe】&a驗證碼已發送至 %email。請使用 &6/register verify <驗證碼> <密碼>&a 完成註冊。'
+    verify_command_usage: '&b【AuthMe】&c用法：「/register verify <驗證碼> <密碼>」'
+    verify_wrong_code: '&b【AuthMe】&c驗證碼錯誤，請重試。'
+    verify_expired: '&b【AuthMe】&c驗證碼已過期，請重新使用 /register <信箱> 開始註冊。'
 
 # Password errors on registration
 password:

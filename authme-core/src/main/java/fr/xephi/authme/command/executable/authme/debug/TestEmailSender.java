@@ -3,15 +3,13 @@ package fr.xephi.authme.command.executable.authme.debug;
 import ch.jalu.datasourcecolumns.data.DataSourceValue;
 import fr.xephi.authme.ConsoleLogger;
 import fr.xephi.authme.datasource.DataSource;
+import fr.xephi.authme.mail.MailSender;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
-import fr.xephi.authme.mail.SendMailSsl;
 import fr.xephi.authme.permission.DebugSectionPermissions;
 import fr.xephi.authme.permission.PermissionNode;
 import fr.xephi.authme.service.BukkitService;
 import fr.xephi.authme.util.StringUtils;
 import fr.xephi.authme.util.Utils;
-import org.apache.commons.mail.EmailException;
-import org.apache.commons.mail.HtmlEmail;
 import org.bukkit.ChatColor;
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
@@ -30,7 +28,7 @@ class TestEmailSender implements DebugSection {
     private DataSource dataSource;
 
     @Inject
-    private SendMailSsl sendMailSsl;
+    private MailSender mailSender;
 
     @Inject
     private BukkitService bukkitService;
@@ -52,7 +50,7 @@ class TestEmailSender implements DebugSection {
     @Override
     public void execute(CommandSender sender, List<String> arguments) {
         sender.sendMessage(ChatColor.BLUE + "AuthMe test email sender");
-        if (!sendMailSsl.hasAllInformation()) {
+        if (!mailSender.hasAllInformation()) {
             sender.sendMessage(ChatColor.RED + "You haven't set all required configurations in config.yml "
                 + "for sending emails. Please check your config.yml");
             return;
@@ -64,7 +62,9 @@ class TestEmailSender implements DebugSection {
         if (email != null) {
             sender.sendMessage("Sending test email to " + email + "...");
             bukkitService.runTaskAsynchronously(() -> {
-                boolean sendMail = sendTestEmail(email);
+                String message = "Hello there!<br />This is a sample email sent to you from a Minecraft server ("
+                    + server.getName() + ") via /authme debug mail. If you're seeing this, sending emails should be fine.";
+                boolean sendMail = mailSender.sendMail(email, "AuthMe test email", message, null);
                 if (sendMail) {
                     sender.sendMessage("Test email sent to " + email + " with success");
                 } else {
@@ -113,20 +113,5 @@ class TestEmailSender implements DebugSection {
             sender.sendMessage(ChatColor.RED + "Invalid email! Usage: /authme debug mail test@example.com");
             return null;
         }
-    }
-
-    private boolean sendTestEmail(String email) {
-        HtmlEmail htmlEmail;
-        try {
-            htmlEmail = sendMailSsl.initializeMail(email);
-        } catch (EmailException e) {
-            logger.logException("Failed to create email for sample email:", e);
-            return false;
-        }
-
-        htmlEmail.setSubject("AuthMe test email");
-        String message = "Hello there!<br />This is a sample email sent to you from a Minecraft server ("
-            + server.getName() + ") via /authme debug mail. If you're seeing this, sending emails should be fine.";
-        return sendMailSsl.sendEmail(message, htmlEmail);
     }
 }

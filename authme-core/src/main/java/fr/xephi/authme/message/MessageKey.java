@@ -137,6 +137,18 @@ public enum MessageKey {
     /** An admin just registered you; please log in again */
     KICK_FOR_ADMIN_REGISTER("registration.kicked_admin_registered"),
 
+    /** A verification code has been sent to %email. Use /register verify {@literal <code>} {@literal <password>} to complete registration. */
+    REGISTRATION_VERIFY_EMAIL_SENT("registration.verify_email_sent", "%email"),
+
+    /** Usage: /register verify {@literal <code>} {@literal <password>} */
+    USAGE_REGISTER_VERIFY("registration.verify_command_usage"),
+
+    /** Wrong verification code. Please try again. */
+    REGISTRATION_VERIFY_WRONG_CODE("registration.verify_wrong_code"),
+
+    /** Your registration verification code has expired. Please start again with /register {@literal <email>}. */
+    REGISTRATION_VERIFY_EXPIRED("registration.verify_expired"),
+
     // -------------------------------------------------------------------------
     // Unregister
     // -------------------------------------------------------------------------

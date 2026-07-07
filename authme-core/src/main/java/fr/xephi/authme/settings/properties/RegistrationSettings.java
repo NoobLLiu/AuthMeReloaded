@@ -27,9 +27,11 @@ public final class RegistrationSettings implements SettingsHolder {
         newProperty("settings.registration.force", true);
 
     @Comment({
-        "Type of registration: PASSWORD or EMAIL",
+        "Type of registration: PASSWORD, EMAIL or EMAIL_VERIFIED_PASSWORD",
         "PASSWORD = account is registered with a password supplied by the user;",
         "EMAIL = password is generated and sent to the email provided by the user.",
+        "EMAIL_VERIFIED_PASSWORD = user first submits an email, receives a verification code,",
+        "  then verifies the code and sets a password. Account is created only after email verification.",
         "More info at https://github.com/AuthMe/AuthMeReloaded/wiki/Registration"
     })
     public static final Property<RegistrationType> REGISTRATION_TYPE =

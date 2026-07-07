@@ -12,6 +12,10 @@ registration:
     reg_only: '&4只有註冊用戶才能加入服務器！ 請訪問http://example.com註冊！'
     success: '&2已成功註冊!'
     kicked_admin_registered: '管理員剛剛註冊了您; 請重新登錄。'
+    verify_email_sent: '&a驗證碼已發送至 %email。請輸入 &6/register verify <驗證碼> <密碼>&a 完成註冊。'
+    verify_command_usage: '&c用法: 輸入"/register verify <驗證碼> <密碼>"'
+    verify_wrong_code: '&c驗證碼錯誤, 請重試。'
+    verify_expired: '&c驗證碼已過期, 請重新輸入 /register <郵箱> 開始註冊。'
 
 # Password errors on registration
 password:

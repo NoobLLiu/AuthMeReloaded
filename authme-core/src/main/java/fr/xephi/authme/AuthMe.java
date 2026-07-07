@@ -9,10 +9,12 @@ import fr.xephi.authme.command.CommandInitializer;
 import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.initialization.DataFolder;
 import fr.xephi.authme.initialization.DataSourceProvider;
+import fr.xephi.authme.initialization.MailSenderProvider;
 import fr.xephi.authme.initialization.OnShutdownPlayerSaver;
 import fr.xephi.authme.initialization.OnStartupTasks;
 import fr.xephi.authme.initialization.SettingsProvider;
 import fr.xephi.authme.initialization.TaskCloser;
+import fr.xephi.authme.mail.MailSender;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.platform.SchedulingAdapter;
 import fr.xephi.authme.security.crypts.Sha256;
@@ -215,6 +217,7 @@ public class AuthMe extends JavaPlugin {
         injector.provide(DataFolder.class, getDataFolder());
         injector.registerProvider(Settings.class, SettingsProvider.class);
         injector.registerProvider(DataSource.class, DataSourceProvider.class);
+        injector.registerProvider(MailSender.class, MailSenderProvider.class);
 
         injector.register(PlatformAdapter.class, platformAdapter);
         injector.register(TeleportAdapter.class, platformAdapter);

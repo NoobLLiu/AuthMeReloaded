@@ -8,11 +8,7 @@ import fr.xephi.authme.settings.properties.EmailSettings;
 import fr.xephi.authme.settings.properties.PluginSettings;
 import fr.xephi.authme.settings.properties.SecuritySettings;
 import fr.xephi.authme.util.FileUtils;
-import org.apache.commons.mail.EmailException;
-import org.apache.commons.mail.HtmlEmail;
 
-import javax.activation.DataSource;
-import javax.activation.FileDataSource;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import java.io.File;
@@ -27,17 +23,17 @@ public class EmailService {
 
     private final File dataFolder;
     private final Settings settings;
-    private final SendMailSsl sendMailSsl;
+    private final MailSender mailSender;
 
     @Inject
-    EmailService(@DataFolder File dataFolder, Settings settings, SendMailSsl sendMailSsl) {
+    EmailService(@DataFolder File dataFolder, Settings settings, MailSender mailSender) {
         this.dataFolder = dataFolder;
         this.settings = settings;
-        this.sendMailSsl = sendMailSsl;
+        this.mailSender = mailSender;
     }
 
     public boolean hasAllInformation() {
-        return sendMailSsl.hasAllInformation();
+        return mailSender.hasAllInformation();
     }
 
 
@@ -55,28 +51,20 @@ public class EmailService {
             return false;
         }
 
-        HtmlEmail email;
-        try {
-            email = sendMailSsl.initializeMail(mailAddress);
-        } catch (EmailException e) {
-            logger.logException("Failed to create email with the given settings:", e);
-            return false;
-        }
-
         String mailText = replaceTagsForPasswordMail(settings.getPasswordEmailMessage(), name, newPass);
         // Generate an image?
         File file = null;
         if (settings.getProperty(EmailSettings.PASSWORD_AS_IMAGE)) {
             try {
                 file = generatePasswordImage(name, newPass);
-                mailText = embedImageIntoEmailContent(file, email, mailText);
-            } catch (IOException | EmailException e) {
+            } catch (IOException e) {
                 logger.logException(
                     "Unable to send new password as image for email " + mailAddress + ":", e);
             }
         }
 
-        boolean couldSendEmail = sendMailSsl.sendEmail(mailText, email);
+        boolean couldSendEmail = mailSender.sendMail(mailAddress,
+            settings.getProperty(EmailSettings.RECOVERY_MAIL_SUBJECT), mailText, file);
         FileUtils.delete(file);
         return couldSendEmail;
     }
@@ -95,17 +83,10 @@ public class EmailService {
             return false;
         }
 
-        HtmlEmail email;
-        try {
-            email = sendMailSsl.initializeMail(mailAddress);
-        } catch (EmailException e) {
-            logger.logException("Failed to create verification email with the given settings:", e);
-            return false;
-        }
-
         String mailText = replaceTagsForVerificationEmail(settings.getVerificationEmailMessage(), name, code,
             settings.getProperty(SecuritySettings.VERIFICATION_CODE_EXPIRATION_MINUTES));
-        return sendMailSsl.sendEmail(mailText, email);
+        return mailSender.sendMail(mailAddress, settings.getProperty(EmailSettings.RECOVERY_MAIL_SUBJECT),
+            mailText, null);
     }
 
     /**
@@ -122,17 +103,10 @@ public class EmailService {
             return false;
         }
 
-        HtmlEmail htmlEmail;
-        try {
-            htmlEmail = sendMailSsl.initializeMail(email);
-        } catch (EmailException e) {
-            logger.logException("Failed to create email confirmation mail with the given settings:", e);
-            return false;
-        }
-
         // TTL matches PendingEmailVerificationCache.TTL_MS (10 minutes)
         String mailText = replaceTagsForVerificationEmail(settings.getEmailConfirmationMessage(), name, code, 10);
-        return sendMailSsl.sendEmail(mailText, htmlEmail);
+        return mailSender.sendMail(email, settings.getProperty(EmailSettings.RECOVERY_MAIL_SUBJECT),
+            mailText, null);
     }
 
     /**
@@ -144,17 +118,10 @@ public class EmailService {
      * @return true if email could be sent, false otherwise
      */
     public boolean sendRecoveryCode(String name, String email, String code) {
-        HtmlEmail htmlEmail;
-        try {
-            htmlEmail = sendMailSsl.initializeMail(email);
-        } catch (EmailException e) {
-            logger.logException("Failed to create email for recovery code:", e);
-            return false;
-        }
-
         String message = replaceTagsForRecoveryCodeMail(settings.getRecoveryCodeEmailMessage(),
             name, code, settings.getProperty(SecuritySettings.RECOVERY_CODE_HOURS_VALID));
-        return sendMailSsl.sendEmail(message, htmlEmail);
+        return mailSender.sendMail(email, settings.getProperty(EmailSettings.RECOVERY_MAIL_SUBJECT),
+            message, null);
     }
 
     private File generatePasswordImage(String name, String newPass) throws IOException {
@@ -162,13 +129,6 @@ public class EmailService {
         File file = new File(dataFolder, name + "_new_pass.jpg");
         ImageIO.write(gen.generateImage(), "jpg", file);
         return file;
-    }
-
-    private static String embedImageIntoEmailContent(File image, HtmlEmail email, String content)
-        throws EmailException {
-        DataSource source = new FileDataSource(image);
-        String tag = email.embed(source, image.getName());
-        return content.replace("<image />", "<img src=\"cid:" + tag + "\">");
     }
 
     private String replaceTagsForPasswordMail(String mailText, String name, String newPass) {
