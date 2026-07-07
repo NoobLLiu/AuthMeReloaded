@@ -13,7 +13,7 @@ registration:
   disabled: '&cIn-game registration is disabled!'
   name_taken: '&cYou already have registered this username!'
   verify_email_sent: '&2A verification code has been sent to %email. Use &6/register verify <code> <password>&2 to complete registration.'
-  verify_command_usage: '&cUsage: /register verify <code> <password>'
+  verify_command_usage: '&cUsage: /register <email>  OR  /register verify <code> <password>'
   verify_wrong_code: '&cWrong verification code. Please try again.'
   verify_expired: '&cYour registration verification code has expired. Please start again with /register <email>.'
 

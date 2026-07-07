@@ -25,14 +25,27 @@ import java.util.regex.Pattern;
  * {@code agently-cli auth login}). The sender address is the
  * {@code @agent.qq.com} mailbox bound to the authorized account.</p>
  *
- * <p>Inline image embedding (the {@code <image />} placeholder used by
- * {@link SendMailSsl}) is not supported by the CLI send path; when an image
- * file is supplied it is passed as an attachment via {@code --attachment} and
- * the placeholder is replaced with a fallback note.</p>
+ * <p>The CLI uses a two-phase confirmation flow: the first call returns a
+ * {@code confirmation_token} in its JSON output; a second call with
+ * {@code --confirmation-token <token>} completes the send. This class
+ * automates both phases in a single {@link #sendMail} invocation.</p>
  */
 public class AgentMailSender implements MailSender {
 
     private final ConsoleLogger logger = ConsoleLoggerFactory.get(AgentMailSender.class);
+
+    /** Pattern to extract confirmation_token from JSON output. */
+    private static final Pattern TOKEN_PATTERN =
+        Pattern.compile("\"confirmation_token\"\\s*:\\s*\"([^\"]+)\"");
+    /** Pattern to detect success in the second-phase output. */
+    private static final Pattern QUEUED_PATTERN =
+        Pattern.compile("\"queued\"\\s*:\\s*true");
+    /** Pattern to detect "ok": true in JSON output. */
+    private static final Pattern OK_PATTERN =
+        Pattern.compile("\"ok\"\\s*:\\s*true");
+    /** Pattern to detect error messages in JSON output. */
+    private static final Pattern ERROR_MSG_PATTERN =
+        Pattern.compile("\"message\"\\s*:\\s*\"([^\"]+)\"");
 
     @Inject
     private Settings settings;
@@ -50,6 +63,50 @@ public class AgentMailSender implements MailSender {
         String cliPath = settings.getProperty(EmailSettings.AGENT_MAIL_CLI_PATH);
         int timeoutSeconds = settings.getProperty(EmailSettings.AGENT_MAIL_TIMEOUT_SECONDS);
 
+        // Build the base command (without confirmation token)
+        List<String> baseCommand = buildSendCommand(cliPath, recipient, subject, htmlContent, imageFile);
+
+        // Phase 1: send request to get confirmation token
+        String phase1Output = runCliCommand(baseCommand, timeoutSeconds);
+        if (phase1Output == null) {
+            return false;
+        }
+
+        String token = extractToken(phase1Output);
+        if (token == null) {
+            // No token returned — check if it's already sent or an error
+            if (OK_PATTERN.matcher(phase1Output).find()) {
+                logger.info("agently-cli sent mail to " + recipient + " without confirmation");
+                return true;
+            }
+            logger.warning("agently-cli did not return a confirmation token. Output: " + phase1Output);
+            if (looksLikeAuthError(phase1Output)) {
+                logger.warning("Agent Mail CLI may not be authorized. Run 'agently-cli auth login' "
+                    + "and complete the WeChat OAuth flow on the server host.");
+            }
+            return false;
+        }
+
+        // Phase 2: confirm and send with the token
+        List<String> confirmCommand = new ArrayList<>(baseCommand);
+        confirmCommand.add("--confirmation-token");
+        confirmCommand.add(token);
+
+        String phase2Output = runCliCommand(confirmCommand, timeoutSeconds);
+        if (phase2Output == null) {
+            return false;
+        }
+
+        if (QUEUED_PATTERN.matcher(phase2Output).find() || OK_PATTERN.matcher(phase2Output).find()) {
+            return true;
+        }
+
+        logger.warning("agently-cli confirmation phase failed. Output: " + phase2Output);
+        return false;
+    }
+
+    private List<String> buildSendCommand(String cliPath, String recipient, String subject,
+                                          String htmlContent, File imageFile) {
         List<String> command = new ArrayList<>();
         command.add(cliPath);
         command.add("message");
@@ -61,19 +118,22 @@ public class AgentMailSender implements MailSender {
         command.add("--body");
         String body = htmlContent;
         if (imageFile != null && body != null) {
-            // The CLI cannot embed inline images; fall back to an attachment + note.
+            // The CLI cannot embed inline images; fall back to a note.
             body = body.replace("<image />",
                 "[Password image is attached to this email.]");
         }
         command.add(body == null ? "" : body);
-        command.add("--body-format");
-        command.add("html");
-        command.add("--auto-confirm");
         if (imageFile != null) {
             command.add("--attachment");
-            command.add(imageFile.getAbsolutePath());
+            command.add(imageFile.getName());
         }
+        return command;
+    }
 
+    /**
+     * Runs the CLI command and returns its stdout output, or null on failure.
+     */
+    private String runCliCommand(List<String> command, int timeoutSeconds) {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         Process process = null;
@@ -90,45 +150,43 @@ public class AgentMailSender implements MailSender {
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
-                logger.warning("agently-cli timed out after " + timeoutSeconds + "s sending mail to " + recipient);
-                return false;
+                logger.warning("agently-cli timed out after " + timeoutSeconds + "s");
+                return null;
             }
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                logger.warning("agently-cli exited with code " + exitCode + " while sending mail to "
-                    + recipient + ". Output: " + output);
-                if (looksLikeAuthError(output.toString())) {
-                    logger.warning("Agent Mail CLI may not be authorized. Run 'agently-cli auth login' "
-                        + "and complete the WeChat OAuth flow on the server host.");
-                }
-                return false;
+            if (process.exitValue() != 0) {
+                logger.warning("agently-cli exited with code " + process.exitValue()
+                    + ". Output: " + output);
+                return null;
             }
-            // On success the CLI prints a JSON object; treat any 0-exit as success.
-            return true;
+            return output.toString();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             if (process != null) {
                 process.destroyForcibly();
             }
             logger.logException("Interrupted while waiting for agently-cli:", e);
-            return false;
+            return null;
         } catch (Exception e) {
             if (process != null) {
                 process.destroyForcibly();
             }
-            logger.logException("Failed to invoke agently-cli to send mail to " + recipient + ":", e);
+            logger.logException("Failed to invoke agently-cli:", e);
             logger.warning("Ensure agently-cli is installed (npm install -g @tencent-qqmail/agently-cli) "
                 + "and present in the server process PATH, or set Email.agentMailCliPath to an absolute path.");
-            return false;
+            return null;
         }
+    }
+
+    private static String extractToken(String output) {
+        Matcher m = TOKEN_PATTERN.matcher(output);
+        return m.find() ? m.group(1) : null;
     }
 
     private static boolean looksLikeAuthError(String output) {
         if (output == null) {
             return false;
         }
-        Pattern p = Pattern.compile("auth|unauthorized|not logged in|login", Pattern.CASE_INSENSITIVE);
-        Matcher m = p.matcher(output);
-        return m.find();
+        Pattern p = Pattern.compile("auth|unauthorized|not logged in|login|invalid_grant", Pattern.CASE_INSENSITIVE);
+        return p.matcher(output).find();
     }
 }

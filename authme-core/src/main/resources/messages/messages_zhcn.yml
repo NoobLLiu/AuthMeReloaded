@@ -13,7 +13,7 @@ registration:
     success: '&8[&6玩家系统&8] &c已成功注册！'
     kicked_admin_registered: '有一位管理员刚刚为您完成了注册，请重新登录'
     verify_email_sent: '&8[&6玩家系统&8] &a验证码已发送至 %email。请使用 &6/register verify <验证码> <密码>&a 完成注册。'
-    verify_command_usage: '&8[&6玩家系统&8] &c正确用法：“/register verify <验证码> <密码>”'
+    verify_command_usage: '&8[&6玩家系统&8] &c正确用法：“/register <邮箱>” 或 “/register verify <验证码> <密码>”'
     verify_wrong_code: '&8[&6玩家系统&8] &c验证码错误，请重试。'
     verify_expired: '&8[&6玩家系统&8] &c验证码已过期，请重新使用 /register <邮箱> 开始注册。'
 

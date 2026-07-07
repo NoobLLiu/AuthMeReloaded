@@ -79,7 +79,12 @@ public class RegisterCommand extends PlayerCommand {
                 TwoFactorRegisterParams.of(player));
             return;
         } else if (arguments.size() < 1) {
-            commonService.send(player, MessageKey.USAGE_REGISTER);
+            RegistrationType registrationType = commonService.getProperty(RegistrationSettings.REGISTRATION_TYPE);
+            if (registrationType == RegistrationType.EMAIL_VERIFIED_PASSWORD) {
+                commonService.send(player, MessageKey.USAGE_REGISTER_VERIFY);
+            } else {
+                commonService.send(player, MessageKey.USAGE_REGISTER);
+            }
             return;
         }
 
