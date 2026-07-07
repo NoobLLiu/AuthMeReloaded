@@ -67,6 +67,7 @@ public class AgentMailSender implements MailSender {
         // automatically. If the cliPath is a bare name (no path separator, no extension),
         // try appending ".cmd" to locate the npm-generated wrapper.
         cliPath = resolveWindowsCommand(cliPath);
+        logger.info("AgentMailSender: using cliPath=" + cliPath + " for recipient=" + recipient);
 
         // Build the base command (without confirmation token)
         List<String> baseCommand = buildSendCommand(cliPath, recipient, subject, htmlContent, imageFile);
@@ -76,11 +77,16 @@ public class AgentMailSender implements MailSender {
         if (phase1Output == null) {
             return false;
         }
+        logger.info("AgentMailSender phase1 output: " + phase1Output.trim());
 
         String token = extractToken(phase1Output);
         if (token == null) {
-            // No token returned — check if it's already sent or an error
-            if (OK_PATTERN.matcher(phase1Output).find()) {
+            // No token returned — only treat as success if there's no confirmation_required
+            // and no error. The Phase 1 response always has "ok": true even when it
+            // requires confirmation, so "ok": true alone is NOT a success signal.
+            if (!phase1Output.contains("\"confirmation_required\"")
+                    && !phase1Output.contains("\"error\"")
+                    && OK_PATTERN.matcher(phase1Output).find()) {
                 logger.info("agently-cli sent mail to " + recipient + " without confirmation");
                 return true;
             }
@@ -91,6 +97,7 @@ public class AgentMailSender implements MailSender {
             }
             return false;
         }
+        logger.info("AgentMailSender got confirmation token: " + token);
 
         // Phase 2: confirm and send with the token
         List<String> confirmCommand = new ArrayList<>(baseCommand);
@@ -101,19 +108,42 @@ public class AgentMailSender implements MailSender {
         if (phase2Output == null) {
             return false;
         }
+        logger.info("AgentMailSender phase2 output: " + phase2Output.trim());
 
-        if (QUEUED_PATTERN.matcher(phase2Output).find() || OK_PATTERN.matcher(phase2Output).find()) {
+        if (QUEUED_PATTERN.matcher(phase2Output).find()) {
+            logger.info("AgentMailSender: mail queued successfully to " + recipient);
+            return true;
+        }
+        // "ok": true with no confirmation_required and no error = success
+        if (OK_PATTERN.matcher(phase2Output).find()
+                && !phase2Output.contains("\"confirmation_required\"")
+                && !phase2Output.contains("\"error\"")) {
+            logger.info("AgentMailSender: mail sent successfully to " + recipient);
             return true;
         }
 
-        logger.warning("agently-cli confirmation phase failed. Output: " + phase2Output);
+        logger.warning("agently-cli confirmation phase did not complete. Output: " + phase2Output);
         return false;
     }
 
     private List<String> buildSendCommand(String cliPath, String recipient, String subject,
                                           String htmlContent, File imageFile) {
         List<String> command = new ArrayList<>();
-        command.add(cliPath);
+        // cliPath may be "node \"C:\\path\\run.js\"" (resolved from .cmd wrapper on Windows)
+        // or a simple "agently-cli" / "C:\\...\\agently-cli.cmd"
+        if (cliPath.startsWith("node ")) {
+            command.add("node");
+            // Extract the path between quotes
+            int firstQuote = cliPath.indexOf('"');
+            int lastQuote = cliPath.lastIndexOf('"');
+            if (firstQuote >= 0 && lastQuote > firstQuote) {
+                command.add(cliPath.substring(firstQuote + 1, lastQuote));
+            } else {
+                command.add(cliPath.substring(5).trim());
+            }
+        } else {
+            command.add(cliPath);
+        }
         command.add("message");
         command.add("+send");
         command.add("--to");
@@ -190,8 +220,10 @@ public class AgentMailSender implements MailSender {
     /**
      * On Windows, Java's ProcessBuilder does not automatically resolve .cmd/.bat
      * extensions for bare command names (unlike cmd.exe or PowerShell). npm global
-     * installs create {@code agently-cli.cmd} wrappers, so if the configured path
-     * is a bare name on Windows, try appending {@code .cmd}.
+     * installs create {@code agently-cli.cmd} wrappers, but those wrappers can
+     * mangle arguments containing HTML characters ({@code <}, {@code >}) which are
+     * common in email bodies. Instead, resolve the underlying JS entry point and
+     * invoke it directly with {@code node}.
      *
      * @param cliPath the configured CLI path
      * @return resolved path usable by ProcessBuilder
@@ -206,7 +238,14 @@ public class AgentMailSender implements MailSender {
         }
         // Try .cmd extension (npm global install creates .cmd wrappers on Windows).
         String cmdPath = cliPath + ".cmd";
-        if (new File(cmdPath).exists()) {
+        File cmdFile = new File(cmdPath);
+        if (cmdFile.exists()) {
+            // Resolve the JS entry point from the .cmd wrapper to avoid argument
+            // mangling by cmd.exe when HTML body contains < and > characters.
+            String jsPath = resolveJsEntryFromCmd(cmdFile);
+            if (jsPath != null) {
+                return jsPath;
+            }
             return cmdPath;
         }
         // Fall back to checking common npm global paths.
@@ -214,11 +253,50 @@ public class AgentMailSender implements MailSender {
         if (npmGlobal != null && !npmGlobal.isEmpty()) {
             String npmCmd = npmGlobal + "\\npm\\" + cliPath + ".cmd";
             if (new File(npmCmd).exists()) {
+                String jsPath = resolveJsEntryFromCmd(new File(npmCmd));
+                if (jsPath != null) {
+                    return jsPath;
+                }
                 return npmCmd;
             }
         }
         // Last resort: return with .cmd appended and let ProcessBuilder try.
         return cmdPath;
+    }
+
+    /**
+     * Parses a npm-generated .cmd wrapper to find the JS entry point and returns
+     * a command string in the form {@code node <path-to-run.js>}.
+     *
+     * @param cmdFile the .cmd wrapper file
+     * @return {@code "node <path>"} or null if the JS entry point cannot be resolved
+     */
+    private static String resolveJsEntryFromCmd(File cmdFile) {
+        try {
+            List<String> lines = java.nio.file.Files.readAllLines(cmdFile.toPath());
+            for (String line : lines) {
+                // npm .cmd wrappers typically end with a line like:
+                //   ... "%_prog%"  "%dp0%\node_modules\...\run.js" %*
+                int jsIdx = line.indexOf("run.js");
+                if (jsIdx > 0) {
+                    // Extract the path containing run.js
+                    int quoteStart = line.lastIndexOf('"', jsIdx);
+                    int dp0Idx = line.indexOf("%dp0%", quoteStart);
+                    if (quoteStart >= 0 && dp0Idx >= 0) {
+                        // %dp0% is the directory of the .cmd file
+                        String jsRelative = line.substring(dp0Idx + 5, jsIdx + 6); // "node_modules\...\run.js"
+                        String jsAbsPath = cmdFile.getParentFile().getAbsolutePath() + "\\" + jsRelative.replace("/", "\\");
+                        File jsFile = new File(jsAbsPath);
+                        if (jsFile.exists()) {
+                            return "node \"" + jsAbsPath + "\"";
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore — fall back to using the .cmd file directly
+        }
+        return null;
     }
 
     private static boolean looksLikeAuthError(String output) {
