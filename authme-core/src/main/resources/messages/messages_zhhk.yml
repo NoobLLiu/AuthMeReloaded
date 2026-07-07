@@ -15,10 +15,6 @@ registration:
     reg_only: '&8[&6用戶系統&8] &f限已註冊會員，請先到本服網站進行註冊。'
     success: '&8[&6用戶系統&8] &b你成功註冊了。'
     kicked_admin_registered: '&8[&6用戶系統&8] &b管理員已替你完成註冊，請重新登入。'
-    verify_email_sent: '&8[&6用戶系統&8] &a驗證碼已發送至 %email。請使用 &6/register verify <驗證碼> <密碼>&a 完成註冊。'
-    verify_command_usage: '&8[&6用戶系統&8] &c用法：「/register <電郵>」或「/register verify <驗證碼> <密碼>」'
-    verify_wrong_code: '&8[&6用戶系統&8] &c驗證碼錯誤，請重試。'
-    verify_expired: '&8[&6用戶系統&8] &c驗證碼已過期，請重新使用 /register <電郵> 開始註冊。'
 
 # Password errors on registration
 password:

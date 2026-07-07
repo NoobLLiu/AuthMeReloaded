@@ -37,13 +37,6 @@ public final class RegistrationMethod<P extends RegistrationParameters> {
     public static final RegistrationMethod<ApiPasswordRegisterParams> API_REGISTRATION =
         new RegistrationMethod<>(ApiPasswordRegisterExecutor.class);
 
-    /**
-     * Email-verified password registration: the player first verifies an email address,
-     * then sets a password. Only used for the second stage (verify + password).
-     */
-    public static final RegistrationMethod<EmailVerifiedRegisterParams> EMAIL_VERIFIED_PASSWORD_REGISTRATION =
-        new RegistrationMethod<>(EmailVerifiedRegisterExecutor.class);
-
 
     private final Class<? extends RegistrationExecutor<P>> executorClass;
 
