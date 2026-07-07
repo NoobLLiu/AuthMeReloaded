@@ -63,6 +63,11 @@ public class AgentMailSender implements MailSender {
         String cliPath = settings.getProperty(EmailSettings.AGENT_MAIL_CLI_PATH);
         int timeoutSeconds = settings.getProperty(EmailSettings.AGENT_MAIL_TIMEOUT_SECONDS);
 
+        // On Windows, Java's ProcessBuilder does not resolve .cmd/.bat extensions
+        // automatically. If the cliPath is a bare name (no path separator, no extension),
+        // try appending ".cmd" to locate the npm-generated wrapper.
+        cliPath = resolveWindowsCommand(cliPath);
+
         // Build the base command (without confirmation token)
         List<String> baseCommand = buildSendCommand(cliPath, recipient, subject, htmlContent, imageFile);
 
@@ -180,6 +185,40 @@ public class AgentMailSender implements MailSender {
     private static String extractToken(String output) {
         Matcher m = TOKEN_PATTERN.matcher(output);
         return m.find() ? m.group(1) : null;
+    }
+
+    /**
+     * On Windows, Java's ProcessBuilder does not automatically resolve .cmd/.bat
+     * extensions for bare command names (unlike cmd.exe or PowerShell). npm global
+     * installs create {@code agently-cli.cmd} wrappers, so if the configured path
+     * is a bare name on Windows, try appending {@code .cmd}.
+     *
+     * @param cliPath the configured CLI path
+     * @return resolved path usable by ProcessBuilder
+     */
+    private static String resolveWindowsCommand(String cliPath) {
+        if (cliPath == null || cliPath.isEmpty()) {
+            return cliPath;
+        }
+        // Already has an extension or is an absolute/relative path — leave as-is.
+        if (cliPath.contains(".") || cliPath.contains("\\") || cliPath.contains("/")) {
+            return cliPath;
+        }
+        // Try .cmd extension (npm global install creates .cmd wrappers on Windows).
+        String cmdPath = cliPath + ".cmd";
+        if (new File(cmdPath).exists()) {
+            return cmdPath;
+        }
+        // Fall back to checking common npm global paths.
+        String npmGlobal = System.getenv("APPDATA");
+        if (npmGlobal != null && !npmGlobal.isEmpty()) {
+            String npmCmd = npmGlobal + "\\npm\\" + cliPath + ".cmd";
+            if (new File(npmCmd).exists()) {
+                return npmCmd;
+            }
+        }
+        // Last resort: return with .cmd appended and let ProcessBuilder try.
+        return cmdPath;
     }
 
     private static boolean looksLikeAuthError(String output) {
