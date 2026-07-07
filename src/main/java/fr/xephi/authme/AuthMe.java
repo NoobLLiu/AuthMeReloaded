@@ -11,6 +11,7 @@ import fr.xephi.authme.command.TabCompleteHandler;
 import fr.xephi.authme.datasource.DataSource;
 import fr.xephi.authme.initialization.DataFolder;
 import fr.xephi.authme.initialization.DataSourceProvider;
+import fr.xephi.authme.initialization.MailSenderProvider;
 import fr.xephi.authme.initialization.OnShutdownPlayerSaver;
 import fr.xephi.authme.initialization.OnStartupTasks;
 import fr.xephi.authme.initialization.SettingsProvider;
@@ -29,6 +30,7 @@ import fr.xephi.authme.listener.PlayerListenerHigherThan18;
 import fr.xephi.authme.listener.PurgeListener;
 import fr.xephi.authme.listener.ServerListener;
 import fr.xephi.authme.mail.EmailService;
+import fr.xephi.authme.mail.MailSender;
 import fr.xephi.authme.output.ConsoleLoggerFactory;
 import fr.xephi.authme.security.crypts.Sha256;
 import fr.xephi.authme.service.BackupService;
@@ -263,6 +265,7 @@ public class AuthMe extends JavaPlugin {
         injector.provide(DataFolder.class, getDataFolder());
         injector.registerProvider(Settings.class, SettingsProvider.class);
         injector.registerProvider(DataSource.class, DataSourceProvider.class);
+        injector.registerProvider(MailSender.class, MailSenderProvider.class);
 
         // Get settings and set up logger
         settings = injector.getSingleton(Settings.class);

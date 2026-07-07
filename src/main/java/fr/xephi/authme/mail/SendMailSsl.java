@@ -12,9 +12,12 @@ import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
 
 import javax.activation.CommandMap;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
 import javax.activation.MailcapCommandMap;
 import javax.inject.Inject;
 import javax.mail.Session;
+import java.io.File;
 import java.security.Security;
 import java.util.Properties;
 
@@ -25,7 +28,7 @@ import static fr.xephi.authme.settings.properties.EmailSettings.MAIL_PASSWORD;
 /**
  * Sends emails to players on behalf of the server.
  */
-public class SendMailSsl {
+public class SendMailSsl implements MailSender {
 
     private ConsoleLogger logger = ConsoleLoggerFactory.get(SendMailSsl.class);
 
@@ -75,6 +78,33 @@ public class SendMailSsl {
 
         setPropertiesForPort(email, port);
         return email;
+    }
+
+    @Override
+    public boolean sendMail(String recipient, String subject, String htmlContent, File imageFile) {
+        HtmlEmail email;
+        try {
+            email = initializeMail(recipient);
+            if (subject != null) {
+                email.setSubject(subject);
+            }
+        } catch (EmailException e) {
+            logger.logException("Failed to create email with the given settings:", e);
+            return false;
+        }
+
+        String content = htmlContent;
+        if (imageFile != null) {
+            try {
+                DataSource source = new FileDataSource(imageFile);
+                String cid = email.embed(source, imageFile.getName());
+                content = content.replace("<image />", "<img src=\"cid:" + cid + "\">");
+            } catch (EmailException e) {
+                logger.logException("Unable to embed image into email content:", e);
+            }
+        }
+
+        return sendEmail(content, email);
     }
 
     /**
