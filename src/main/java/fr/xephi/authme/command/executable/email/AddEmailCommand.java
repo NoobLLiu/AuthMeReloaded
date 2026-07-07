@@ -11,6 +11,11 @@ import java.util.List;
 
 /**
  * Command for setting an email to an account.
+ *
+ * <p>Two-phase flow: issues {@code /email add <email> <confirmEmail>}; if the
+ * two email addresses match, a verification code is sent to the new address.
+ * The player must then run {@code /email confirm <code>} to complete the
+ * binding.</p>
  */
 public class AddEmailCommand extends PlayerCommand {
 
@@ -26,7 +31,7 @@ public class AddEmailCommand extends PlayerCommand {
         String emailConfirmation = arguments.get(1);
 
         if (email.equals(emailConfirmation)) {
-            // Closer inspection of the mail address handled by the async task
+            // Validation and verification code dispatch handled by the async task
             management.performAddEmail(player, email);
         } else {
             commonService.send(player, MessageKey.CONFIRM_EMAIL_MESSAGE);

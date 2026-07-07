@@ -215,6 +215,21 @@ public enum MessageKey {
     /** Changing email was not allowed */
     EMAIL_CHANGE_NOT_ALLOWED("email.change_not_allowed"),
 
+    /** Verification code sent to your new email address. Use /email confirm <code> to complete. */
+    EMAIL_VERIFICATION_SENT("email.verification_sent"),
+
+    /** Email confirmed successfully! */
+    EMAIL_CONFIRM_SUCCESS("email.confirm_success"),
+
+    /** Incorrect verification code. */
+    EMAIL_CONFIRM_WRONG_CODE("email.confirm_wrong_code"),
+
+    /** No pending email change. Use /email add or /email change first. */
+    EMAIL_NO_PENDING_CHANGE("email.no_pending_change"),
+
+    /** Usage: /email confirm <code> */
+    USAGE_EMAIL_CONFIRM("email.usage_email_confirm"),
+
     /** Your current email address is: %email */
     EMAIL_SHOW("email.email_show", "%email"),
 

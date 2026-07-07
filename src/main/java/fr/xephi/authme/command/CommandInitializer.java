@@ -35,6 +35,7 @@ import fr.xephi.authme.command.executable.changepassword.ChangePasswordCommand;
 import fr.xephi.authme.command.executable.email.AddEmailCommand;
 import fr.xephi.authme.command.executable.email.ChangeEmailCommand;
 import fr.xephi.authme.command.executable.email.EmailBaseCommand;
+import fr.xephi.authme.command.executable.email.EmailConfirmCommand;
 import fr.xephi.authme.command.executable.email.EmailSetPasswordCommand;
 import fr.xephi.authme.command.executable.email.ProcessCodeCommand;
 import fr.xephi.authme.command.executable.email.RecoverEmailCommand;
@@ -531,6 +532,18 @@ public class CommandInitializer {
             .withArgument("newEmail", "New email address", MANDATORY)
             .permission(PlayerPermission.CHANGE_EMAIL)
             .executableCommand(ChangeEmailCommand.class)
+            .register();
+
+        // Register the confirm command (completes email add/change verification)
+        CommandDescription.builder()
+            .parent(emailBase)
+            .labels("confirm", "verify")
+            .description("Confirm email change")
+            .detailedDescription("Confirm a pending email change with the verification code "
+                + "sent to your new email address.")
+            .withArgument("code", "Verification code", MANDATORY)
+            .permission(PlayerPermission.ADD_EMAIL)
+            .executableCommand(EmailConfirmCommand.class)
             .register();
 
         // Register the recover command
